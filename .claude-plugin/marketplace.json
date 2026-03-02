@@ -9,7 +9,7 @@
       "name": "live-md-viewer",
       "description": "Local markdown viewer with live reload, syntax highlighting, mermaid diagrams, multi-file sidebar, and light/dark themes.",
       "source": "./plugins/live-md-viewer",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "category": "productivity",
       "tags": ["markdown", "viewer", "live-reload"]
     }
