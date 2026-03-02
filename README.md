@@ -2,7 +2,7 @@
 
 A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that renders markdown files in a local browser with live reload, syntax highlighting, mermaid diagrams, multi-file sidebar, and light/dark themes.
 
-When installed, it **automatically launches** whenever Claude Code writes a report-like markdown file to disk — no manual invocation needed.
+When installed, it **automatically launches** whenever Claude Code writes a markdown file to disk — no manual invocation needed.
 
 ## Features
 
@@ -40,7 +40,7 @@ Once installed, the PostToolUse hook activates automatically — any markdown re
 
 ### Automatic (recommended)
 
-Just use Claude Code normally. When it writes a report-like markdown file, the viewer launches automatically and opens in your browser. Subsequent files are added to the sidebar without spawning a new server.
+Just use Claude Code normally. When it writes a markdown file, the viewer launches automatically and opens in your browser. Subsequent files are added to the sidebar without spawning a new server.
 
 ### Manual
 
@@ -71,17 +71,13 @@ Or just keep writing markdown files — the hook adds them automatically.
 
 ## Auto-detection
 
-The PostToolUse hook fires on every `Write` tool call and checks if the file is a report-like markdown file. A file must match **at least one** signal:
+The PostToolUse hook fires on every `Write` tool call and launches the viewer for **any `.md` file** unless it matches the deny list:
 
-| Signal type | Matches |
-|-------------|---------|
-| **Path** | `docs/`, `temp/`, `plans/`, `reports/`, `/tmp/`, `analysis/`, `audits/` |
-| **Filename** | `report`, `summary`, `anatomy`, `audit`, `gap`, `analysis`, `breakdown`, `review`, `flow`, `overview`, `findings`, `assessment`, `diagnostic`, `plan` |
-| **Content** | 30+ lines with 3+ headings, tables, or 5+ list items |
+**Ignored filenames:** `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
 
-**Ignored files:** `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
+**Ignored paths:** `/.claude/`, `/node_modules/`, `/.git/`
 
-**Ignored paths:** `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, `.claude/plugins/`, `node_modules/`
+The hook spawns the server directly as a detached process — no LLM action required.
 
 ## REST API
 
@@ -98,11 +94,11 @@ The viewer server exposes an API for programmatic use:
 ## How it works
 
 1. **Claude Code writes a file** using the `Write` tool
-2. **PostToolUse hook fires** — `auto-launch.mjs` receives the file path and content on stdin
-3. **Report detection** — checks file extension, path, filename, and content structure
+2. **PostToolUse hook fires** — `auto-launch.mjs` receives the file path on stdin
+3. **Deny-list check** — skips ignored filenames (`README.md`, etc.) and ignored paths (`/.claude/`, `/node_modules/`, `/.git/`)
 4. **Server routing**:
    - Server already running → file is silently added via `POST /api/add-file`
-   - No server running → launch directive printed to stdout for Claude Code to execute as a background task
+   - No server running → hook spawns the server directly as a detached child process
 5. **Live reload** — the server watches all tracked files with `fs.watchFile`. Changes trigger SSE events to all connected browsers
 6. **Browser rendering** — marked.js parses GFM, highlight.js colorizes code blocks, mermaid.js renders diagrams, DOMPurify sanitizes everything
 

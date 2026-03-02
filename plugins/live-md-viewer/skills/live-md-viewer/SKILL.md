@@ -117,24 +117,22 @@ kill <pid>        # Graceful shutdown (use pid from the JSON output)
 
 ## Auto-Launch (PostToolUse Hook)
 
-A PostToolUse hook on `Write` automatically launches the viewer whenever a markdown report is written to disk. **No manual invocation needed** — just write the file and the viewer appears.
+A PostToolUse hook on `Write` automatically launches the viewer whenever a markdown file is written to disk. **No manual invocation needed** — just write the file and the viewer appears.
 
 ### How it works
 
 1. Every `Write` tool call triggers `hooks/auto-launch.mjs`
-2. The hook checks if the written file is a "report-like" markdown file
+2. The hook checks if the written file is a viewable markdown file (deny-list approach)
 3. If a server is already running, it silently adds the file via API
-4. If no server is running, it outputs a launch directive for the LLM to execute via `Bash(run_in_background: true)`
+4. If no server is running, the hook **spawns the server directly** as a detached process and emits a JSON `systemMessage` to inform the LLM (no action needed from the LLM)
 
-### Detection heuristics
+### Detection (deny-list approach)
 
-1. File ends with `.md`
-2. File is NOT a known non-report (`CLAUDE.md`, `README.md`, `CHANGELOG.md`, etc.)
-3. File is NOT in config paths (`.claude/skills/`, `.claude/agents/`, `node_modules/`)
-4. File matches at least one "report signal":
-   - **Path signal**: contains `docs/`, `temp/`, `plans/`, `reports/`, `/tmp/`, `analysis/`, `audits/`
-   - **Filename signal**: contains `report`, `summary`, `anatomy`, `audit`, `gap`, `analysis`, `breakdown`, `review`, `flow`, `overview`, `findings`, `assessment`, `diagnostic`, `plan`
-   - **Content signal**: >30 lines with structural markers (3+ headings, tables, or 5+ list items)
+Any `.md` file triggers the viewer **unless** it matches the deny list:
+
+**Ignored filenames:** `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
+
+**Ignored paths:** `/.claude/`, `/node_modules/`, `/.git/`
 
 ### Duplicate prevention
 
