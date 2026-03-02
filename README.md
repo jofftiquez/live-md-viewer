@@ -28,8 +28,14 @@ No `npm install` needed — the server uses Node's built-in HTTP module and fetc
 ## Installation
 
 ```bash
-# From any Claude Code session:
-/install-plugin https://github.com/jofftiquez/live-md-viewer
+# 1. Clone the repo
+git clone https://github.com/jofftiquez/live-md-viewer.git
+
+# 2. From a Claude Code session, register the plugin:
+/plugin marketplace add /path/to/live-md-viewer
+
+# 3. Install it:
+/plugin install live-md-viewer
 ```
 
 Once installed, the PostToolUse hook activates automatically — any markdown report Claude Code writes will open in the viewer.
