@@ -1,0 +1,10 @@
+{
+  "name": "live-md-viewer",
+  "description": "Local markdown viewer with live reload, syntax highlighting, mermaid diagrams, multi-file sidebar, and light/dark themes. Auto-launches on Write via PostToolUse hook.",
+  "version": "1.0.0",
+  "author": {
+    "name": "MYCURE Inc."
+  },
+  "license": "MIT",
+  "keywords": ["markdown", "viewer", "live-reload", "mermaid", "syntax-highlighting"]
+}
