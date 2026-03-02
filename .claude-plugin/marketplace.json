@@ -2,14 +2,16 @@
   "name": "live-md-viewer",
   "description": "Claude Code plugin marketplace for live-md-viewer",
   "owner": {
-    "name": "MYCURE Inc."
+    "name": "Joff Tiquez"
   },
   "plugins": [
     {
       "name": "live-md-viewer",
       "description": "Local markdown viewer with live reload, syntax highlighting, mermaid diagrams, multi-file sidebar, and light/dark themes.",
-      "source": ".",
-      "version": "1.0.0"
+      "source": "./plugins/live-md-viewer",
+      "version": "1.0.0",
+      "category": "productivity",
+      "tags": ["markdown", "viewer", "live-reload"]
     }
   ]
 }

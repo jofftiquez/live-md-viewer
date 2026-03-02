@@ -113,15 +113,18 @@ A PID registry at `/tmp/live-md-viewer-registry.json` prevents duplicate servers
 ```
 live-md-viewer/
 ├── .claude-plugin/
-│   ├── marketplace.json     # Marketplace catalog
-│   └── plugin.json          # Plugin manifest
-├── hooks/
-│   ├── hooks.json            # PostToolUse hook registration
-│   └── auto-launch.mjs       # Report detection + server management
-├── skills/
+│   └── marketplace.json          # Marketplace catalog
+├── plugins/
 │   └── live-md-viewer/
-│       └── SKILL.md          # Skill instructions for Claude Code
-├── server.mjs                # Node HTTP server + HTML viewer
+│       ├── .claude-plugin/
+│       │   └── plugin.json       # Plugin manifest
+│       ├── hooks/
+│       │   ├── hooks.json        # PostToolUse hook registration
+│       │   └── auto-launch.mjs   # Report detection + server management
+│       ├── skills/
+│       │   └── live-md-viewer/
+│       │       └── SKILL.md      # Skill instructions for Claude Code
+│       └── server.mjs            # Node HTTP server + HTML viewer
 ├── README.md
 └── LICENSE
 ```
