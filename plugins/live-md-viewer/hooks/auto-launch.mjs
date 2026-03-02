@@ -1,31 +1,30 @@
 #!/usr/bin/env node
 /**
- * PostToolUse hook for Write — detects markdown files and manages the viewer.
+ * PostToolUse hook for Write — detects markdown files and adds them to a
+ * running viewer server.
  *
- * Two modes:
- *   1. Server already running → silently adds the file via POST /api/add-file
- *   2. No server running → spawns the server as a detached child process
- *      and emits a systemMessage so the LLM knows the viewer is up
+ * This hook is a **silent file-adder only**. It does NOT launch the server.
+ * Server launch is handled by the LLM via SKILL.md instructions, which
+ * produces a tracked Claude Code background task.
  *
- * Detection: any .md file triggers the viewer UNLESS it matches the deny list
+ * Behaviour:
+ *   - Server running → silently adds the file via POST /api/add-file
+ *   - No server running → exits silently (SKILL.md handles launch)
+ *
+ * Detection: any .md file triggers the hook UNLESS it matches the deny list
  * (common config/meta files and ignored path segments).
  *
  * Input (stdin JSON from Claude Code):
  *   { "tool_input": { "file_path": "...", "content": "..." }, "tool_response": "..." }
  *
  * Output:
- *   - Silent (no stdout) when file is added to existing server or not viewable
- *   - JSON systemMessage to stdout when a new server is spawned
+ *   - Always silent (no stdout) — all communication goes through SKILL.md
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { basename, dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { basename, resolve } from "node:path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const REGISTRY_PATH = "/tmp/live-md-viewer-registry.json";
-const SERVER_PATH = resolve(__dirname, "..", "server.mjs");
 
 // ── Registry management ──────────────────────────────────────────────────────
 
@@ -125,24 +124,9 @@ try {
   if (entry && isProcessAlive(entry.pid) && entry.port > 0) {
     // Server is running — add file via API (silent)
     await addFileToServer(entry.port, resolvedPath);
-    process.exit(0);
   }
 
-  // No server running — spawn it directly as a detached process
-  const child = spawn(process.execPath, [SERVER_PATH, resolvedPath], {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
-
-  // Inform the LLM (informational only — server is already running)
-  console.log(
-    JSON.stringify({
-      systemMessage:
-        `[live-md-viewer] Spawned viewer for ${resolvedPath} (pid ${child.pid}). ` +
-        `The browser will open automatically. No action needed.`,
-    })
-  );
+  // No server running — do nothing; SKILL.md instructs the LLM to launch it
 } catch (err) {
   console.error(`[live-md-viewer] Hook error: ${err.message}`);
 }

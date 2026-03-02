@@ -8,6 +8,63 @@ triggers:
   - User asks for a visual/rendered view of markdown output
 ---
 
+## MANDATORY: After Writing Any .md File
+
+You MUST follow this procedure every time you write a `.md` file to disk. Do not skip any step.
+
+### Step 1: Check the deny list
+
+Stop here (take no action) if the file matches ANY of these:
+
+**Ignored filenames** (case-insensitive): `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
+
+**Ignored path segments**: `/.claude/`, `/node_modules/`, `/.git/`
+
+If the file is on the deny list, **stop — do nothing**.
+
+### Step 2: Check the server registry
+
+Run this command to check if a viewer server is already running:
+
+```bash
+cat /tmp/live-md-viewer-registry.json 2>/dev/null
+```
+
+If the file exists and contains a JSON object with `pid` and `port`:
+- Verify the process is alive: `kill -0 <pid> 2>/dev/null && echo "alive" || echo "dead"`
+- If **alive**, go to Step 3a
+- If **dead** (or the file doesn't exist), go to Step 3b
+
+### Step 3a: Add file to running server
+
+The server is already running. Add the file via the API:
+
+```bash
+curl -s -X POST http://localhost:<port>/api/add-file \
+  -H 'Content-Type: application/json' \
+  -d '{"file": "<absolute-path-to-md-file>"}'
+```
+
+Done. No further action needed.
+
+### Step 3b: Launch a new server
+
+No server is running. You MUST launch it as a **background task** so it appears as a tracked Claude Code task:
+
+```
+Bash({
+  command: "node ${CLAUDE_PLUGIN_ROOT}/server.mjs <absolute-path-to-md-file>",
+  run_in_background: true,
+  description: "Launch markdown viewer for <filename>"
+})
+```
+
+The first line of stdout is JSON: `{ "pid": ..., "port": ..., "url": "http://localhost:...", "file": "..." }`
+
+After launching, tell the user the URL. The browser opens automatically.
+
+---
+
 # Live MD Viewer
 
 Renders any markdown file in a local browser with dark/light themes, syntax highlighting, mermaid diagram support, multi-file sidebar, and live reload via SSE.
@@ -28,52 +85,7 @@ Also activate when the user explicitly asks to preview/view/render a markdown fi
 - Trivial files (e.g., a 3-line README edit)
 - Files the user hasn't asked to see
 
-## How to Use
-
-**IMPORTANT: Always run as a background process using the Bash tool's `run_in_background` parameter.** The server is long-lived — it runs until killed. Never run it in the foreground or it will block your session.
-
-### Step 1: Launch in background
-
-Use the Bash tool with `run_in_background: true`:
-
-```typescript
-// In Claude Code, call:
-Bash({
-  command: "node ${CLAUDE_PLUGIN_ROOT}/server.mjs /path/to/file.md",
-  run_in_background: true,
-  description: "Launch markdown viewer for file.md"
-})
-```
-
-The first line of stdout is JSON:
-```json
-{ "pid": 12345, "port": 4900, "url": "http://localhost:4900", "file": "/path/to/file.md" }
-```
-
-### Step 2: Tell the user the URL
-
-After launching, report the URL to the user. The browser opens automatically.
-
-### Adding files to a running viewer
-
-If the viewer is already running, add files via the API:
-
-```bash
-curl -X POST http://localhost:4900/api/add-file \
-  -H 'Content-Type: application/json' \
-  -d '{"file": "/path/to/file.md"}'
-```
-
-### Piping from stdin
-
-```typescript
-Bash({
-  command: "echo '# My Report' | node ${CLAUDE_PLUGIN_ROOT}/server.mjs --stdin",
-  run_in_background: true
-})
-```
-
-### CLI Flags
+## CLI Flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -82,7 +94,16 @@ Bash({
 | `--no-open` | `false` | Don't auto-open browser |
 | `--stdin` | `false` | Read markdown from stdin instead of file |
 
-### Live Reload
+## Piping from stdin
+
+```
+Bash({
+  command: "echo '# My Report' | node ${CLAUDE_PLUGIN_ROOT}/server.mjs --stdin",
+  run_in_background: true
+})
+```
+
+## Live Reload
 
 The viewer watches the file for changes (500ms poll interval). When the file changes on disk, all connected browsers refresh automatically via Server-Sent Events. This means:
 
@@ -90,7 +111,7 @@ The viewer watches the file for changes (500ms poll interval). When the file cha
 - Multiple browser tabs can connect simultaneously
 - If the connection drops, the client auto-reconnects after 2 seconds
 
-### Stopping the Server
+## Stopping the Server
 
 ```bash
 kill <pid>        # Graceful shutdown (use pid from the JSON output)
@@ -115,29 +136,6 @@ kill <pid>        # Graceful shutdown (use pid from the JSON output)
 **Output:** JSON to stdout with `{ pid, port, url, files }`, then serves HTTP until killed
 **Side effects:** Opens browser tab (unless `--no-open`), creates temp file if `--stdin`
 
-## Auto-Launch (PostToolUse Hook)
-
-A PostToolUse hook on `Write` automatically launches the viewer whenever a markdown file is written to disk. **No manual invocation needed** — just write the file and the viewer appears.
-
-### How it works
-
-1. Every `Write` tool call triggers `hooks/auto-launch.mjs`
-2. The hook checks if the written file is a viewable markdown file (deny-list approach)
-3. If a server is already running, it silently adds the file via API
-4. If no server is running, the hook emits a JSON `systemMessage` instructing the LLM to launch the server via `Bash(run_in_background: true)` so it's tracked as a Claude Code background task
-
-### Detection (deny-list approach)
-
-Any `.md` file triggers the viewer **unless** it matches the deny list:
-
-**Ignored filenames:** `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
-
-**Ignored paths:** `/.claude/`, `/node_modules/`, `/.git/`
-
-### Duplicate prevention
-
-A PID registry at `/tmp/live-md-viewer-registry.json` tracks active viewers. The hook adds files to the running server instead of spawning duplicates.
-
 ## Runtime API
 
 | Endpoint | Method | Description |
@@ -147,14 +145,18 @@ A PID registry at `/tmp/live-md-viewer-registry.json` tracks active viewers. The
 | `/api/add-file` | POST | Add a new file `{"file": "/path"}` |
 | `/api/events` | GET | SSE stream (reload, file-added, connected) |
 
-## Manual Launch
+## Auto-Launch Backup (PostToolUse Hook)
 
-You can also launch the viewer manually for files that don't match the auto-detection heuristics:
+A PostToolUse hook on `Write` acts as a backup mechanism. When a server is already running, the hook silently adds new markdown files via the API — so even if you forget the steps above, subsequent files still appear in the sidebar. The hook does **not** launch the server; that is your responsibility via the MANDATORY procedure above.
 
-```typescript
-Bash({
-  command: "node ${CLAUDE_PLUGIN_ROOT}/server.mjs /path/to/file.md",
-  run_in_background: true,
-  description: "Launch markdown viewer for file.md"
-})
-```
+### Detection (deny-list approach)
+
+Any `.md` file triggers the hook **unless** it matches the deny list:
+
+**Ignored filenames:** `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
+
+**Ignored paths:** `/.claude/`, `/node_modules/`, `/.git/`
+
+### Duplicate prevention
+
+A PID registry at `/tmp/live-md-viewer-registry.json` tracks active viewers. Both the hook and the MANDATORY procedure above check this registry to avoid spawning duplicate servers.
