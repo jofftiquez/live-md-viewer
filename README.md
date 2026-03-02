@@ -28,13 +28,13 @@ No `npm install` needed — the server uses Node's built-in HTTP module and fetc
 ## Installation
 
 ```bash
-# 1. Clone the repo
 git clone https://github.com/jofftiquez/live-md-viewer.git
+```
 
-# 2. From a Claude Code session, register the plugin:
-/plugin marketplace add /path/to/live-md-viewer
+Then from a Claude Code session:
 
-# 3. Install it:
+```
+/plugin marketplace add ./live-md-viewer
 /plugin install live-md-viewer
 ```
 
