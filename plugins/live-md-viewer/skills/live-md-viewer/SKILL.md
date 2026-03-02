@@ -147,7 +147,7 @@ kill <pid>        # Graceful shutdown (use pid from the JSON output)
 
 ## Auto-Launch (PostToolUse Hook)
 
-A PostToolUse hook on `Write` automatically launches the viewer whenever a markdown file is written to disk. **No manual invocation needed** — just write the file and the viewer appears. If a server is already running, the hook silently adds new files via the API.
+A PostToolUse hook on `Write` automatically detects markdown files. When no server is running, the hook appends `additionalContext` to the Write tool result instructing you to launch the server via `Bash(run_in_background: true)`. If a server is already running, the hook silently adds new files via the API. **No manual invocation needed** — just write the file and follow the hook's instruction.
 
 ### Detection (deny-list approach)
 

@@ -1,7 +1,7 @@
 {
   "name": "live-md-viewer",
   "description": "Local markdown viewer with live reload, syntax highlighting, mermaid diagrams, multi-file sidebar, and light/dark themes. Auto-launches on Write via PostToolUse hook.",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "author": {
     "name": "Joff Tiquez",
     "url": "https://github.com/jofftiquez"

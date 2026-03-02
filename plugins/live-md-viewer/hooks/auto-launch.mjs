@@ -4,7 +4,13 @@
  *
  * Two modes:
  *   1. Server already running → silently adds the file via POST /api/add-file
- *   2. No server running → spawns the server as a detached child process
+ *   2. No server running → outputs additionalContext instructing the LLM to
+ *      launch the server via Bash(run_in_background: true) as a tracked task
+ *
+ * IMPORTANT: Plain stdout from PostToolUse hooks is NOT visible to the LLM.
+ * Only hookSpecificOutput.additionalContext is appended to the tool result
+ * and seen by the LLM. This is why previous systemMessage/plain-text
+ * approaches were silently ignored.
  *
  * Detection: any .md file triggers the viewer UNLESS it matches the deny list
  * (common config/meta files and ignored path segments).
@@ -14,13 +20,12 @@
  *
  * Output:
  *   - Silent (no stdout) when file is added to existing server or not viewable
- *   - Silent when a new server is spawned (server handles its own browser open)
+ *   - JSON with hookSpecificOutput.additionalContext when server needs launching
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REGISTRY_PATH = "/tmp/live-md-viewer-registry.json";
@@ -122,17 +127,36 @@ try {
   const entry = loadRegistry();
 
   if (entry && isProcessAlive(entry.pid) && entry.port > 0) {
-    // Server is running — add file via API (silent)
+    // Server is running — add file via API (silent, no stdout)
     await addFileToServer(entry.port, resolvedPath);
     process.exit(0);
   }
 
-  // No server running — spawn it as a detached process
-  const child = spawn(process.execPath, [SERVER_PATH, resolvedPath], {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
+  // No server running — instruct the LLM to launch it as a tracked background task.
+  // hookSpecificOutput.additionalContext is appended to the Write tool result
+  // so the LLM actually sees it (unlike plain stdout which is hidden).
+  const instruction = [
+    `[live-md-viewer] A viewable markdown file was written: ${resolvedPath}`,
+    ``,
+    `You MUST now launch the live markdown viewer as a background task by running:`,
+    ``,
+    `Bash({`,
+    `  command: "node ${SERVER_PATH} ${resolvedPath}",`,
+    `  run_in_background: true,`,
+    `  description: "Live markdown viewer"`,
+    `})`,
+    ``,
+    `The browser will open automatically. Tell the user the viewer URL after it launches.`,
+  ].join("\n");
+
+  console.log(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "PostToolUse",
+        additionalContext: instruction,
+      },
+    })
+  );
 } catch (err) {
   console.error(`[live-md-viewer] Hook error: ${err.message}`);
 }
