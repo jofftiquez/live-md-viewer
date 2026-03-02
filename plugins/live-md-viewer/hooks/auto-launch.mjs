@@ -4,9 +4,8 @@
  *
  * Two modes:
  *   1. Server already running → silently adds the file via POST /api/add-file
- *   2. No server running → emits a JSON systemMessage instructing the LLM
- *      to launch the server via Bash(run_in_background: true) so it's
- *      tracked as a Claude Code background task
+ *   2. No server running → spawns the server as a detached child process
+ *      and emits a systemMessage so the LLM knows the viewer is up
  *
  * Detection: any .md file triggers the viewer UNLESS it matches the deny list
  * (common config/meta files and ignored path segments).
@@ -16,12 +15,13 @@
  *
  * Output:
  *   - Silent (no stdout) when file is added to existing server or not viewable
- *   - JSON systemMessage to stdout when a new server needs to be launched
+ *   - JSON systemMessage to stdout when a new server is spawned
  */
 
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawn } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REGISTRY_PATH = "/tmp/live-md-viewer-registry.json";
@@ -128,17 +128,19 @@ try {
     process.exit(0);
   }
 
-  // No server running — instruct the LLM to launch it as a background task
-  const cmd = `node ${SERVER_PATH} "${resolvedPath}"`;
+  // No server running — spawn it directly as a detached process
+  const child = spawn(process.execPath, [SERVER_PATH, resolvedPath], {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+
+  // Inform the LLM (informational only — server is already running)
   console.log(
     JSON.stringify({
       systemMessage:
-        `[live-md-viewer] Markdown file detected: ${resolvedPath}\n` +
-        `You MUST now launch the viewer by calling the Bash tool with:\n` +
-        `  command: ${JSON.stringify(cmd)}\n` +
-        `  run_in_background: true\n` +
-        `  description: "Live markdown viewer"\n` +
-        `Do this immediately. Do not ask the user for confirmation.`,
+        `[live-md-viewer] Spawned viewer for ${resolvedPath} (pid ${child.pid}). ` +
+        `The browser will open automatically. No action needed.`,
     })
   );
 } catch (err) {
