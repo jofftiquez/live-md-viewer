@@ -34,13 +34,13 @@ From a Claude Code session:
 /plugin install live-md-viewer@live-md-viewer
 ```
 
-Once installed, the SKILL.md instructions guide the LLM to launch the viewer automatically — any markdown report Claude Code writes will open in the viewer.
+Once installed, the PostToolUse hook activates automatically — any markdown report Claude Code writes will open in the viewer.
 
 ## Usage
 
 ### Automatic (recommended)
 
-Just use Claude Code normally. When it writes a markdown file, the LLM launches the viewer as a tracked background task (instructed by SKILL.md). Subsequent files are added to the sidebar — either by the LLM or silently by the PostToolUse hook.
+Just use Claude Code normally. When it writes a markdown file, the viewer launches automatically and opens in your browser. Subsequent files are added to the sidebar without spawning a new server.
 
 ### Manual
 
@@ -71,13 +71,13 @@ Or just keep writing markdown files — the hook adds them automatically.
 
 ## Auto-detection
 
-The SKILL.md instructions fire after every `Write` tool call and launch the viewer for **any `.md` file** unless it matches the deny list:
+The PostToolUse hook fires on every `Write` tool call and launches the viewer for **any `.md` file** unless it matches the deny list:
 
 **Ignored filenames:** `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`
 
 **Ignored paths:** `/.claude/`, `/node_modules/`, `/.git/`
 
-A PostToolUse hook acts as a backup, silently adding files to an already-running server via the API.
+The hook spawns the server as a detached process on first markdown write, then adds subsequent files via the API.
 
 ## REST API
 
@@ -94,14 +94,13 @@ The viewer server exposes an API for programmatic use:
 ## How it works
 
 1. **Claude Code writes a file** using the `Write` tool
-2. **SKILL.md procedure activates** — the LLM checks the deny list, then checks the server registry
+2. **PostToolUse hook fires** — `auto-launch.mjs` receives the file path on stdin
 3. **Deny-list check** — skips ignored filenames (`README.md`, etc.) and ignored paths (`/.claude/`, `/node_modules/`, `/.git/`)
 4. **Server routing**:
-   - Server already running — file is added via `POST /api/add-file`
-   - No server running — the LLM launches it as a background task (instructed by SKILL.md), producing a tracked Claude Code task
-5. **PostToolUse hook (backup)** — silently adds files to a running server via the API; does not launch the server
-6. **Live reload** — the server watches all tracked files with `fs.watchFile`. Changes trigger SSE events to all connected browsers
-7. **Browser rendering** — marked.js parses GFM, highlight.js colorizes code blocks, mermaid.js renders diagrams, DOMPurify sanitizes everything
+   - Server already running — file is silently added via `POST /api/add-file`
+   - No server running — hook spawns the server as a detached process
+5. **Live reload** — the server watches all tracked files with `fs.watchFile`. Changes trigger SSE events to all connected browsers
+6. **Browser rendering** — marked.js parses GFM, highlight.js colorizes code blocks, mermaid.js renders diagrams, DOMPurify sanitizes everything
 
 A PID registry at `/tmp/live-md-viewer-registry.json` prevents duplicate servers. Stale PIDs are detected and ignored.
 
@@ -117,10 +116,10 @@ live-md-viewer/
 │       │   └── plugin.json       # Plugin manifest
 │       ├── hooks/
 │       │   ├── hooks.json        # PostToolUse hook registration
-│       │   └── auto-launch.mjs   # Silent file-adder (backup for SKILL.md)
+│       │   └── auto-launch.mjs   # Markdown detection + server management
 │       ├── skills/
 │       │   └── live-md-viewer/
-│       │       └── SKILL.md      # Primary launch instructions for the LLM
+│       │       └── SKILL.md      # Skill instructions for Claude Code
 │       └── server.mjs            # Node HTTP server + HTML viewer
 ├── README.md
 └── LICENSE

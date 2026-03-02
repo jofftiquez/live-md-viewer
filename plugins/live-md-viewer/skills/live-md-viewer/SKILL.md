@@ -145,9 +145,9 @@ kill <pid>        # Graceful shutdown (use pid from the JSON output)
 | `/api/add-file` | POST | Add a new file `{"file": "/path"}` |
 | `/api/events` | GET | SSE stream (reload, file-added, connected) |
 
-## Auto-Launch Backup (PostToolUse Hook)
+## Auto-Launch (PostToolUse Hook)
 
-A PostToolUse hook on `Write` acts as a backup mechanism. When a server is already running, the hook silently adds new markdown files via the API — so even if you forget the steps above, subsequent files still appear in the sidebar. The hook does **not** launch the server; that is your responsibility via the MANDATORY procedure above.
+A PostToolUse hook on `Write` automatically launches the viewer whenever a markdown file is written to disk. **No manual invocation needed** — just write the file and the viewer appears. If a server is already running, the hook silently adds new files via the API.
 
 ### Detection (deny-list approach)
 
@@ -159,4 +159,4 @@ Any `.md` file triggers the hook **unless** it matches the deny list:
 
 ### Duplicate prevention
 
-A PID registry at `/tmp/live-md-viewer-registry.json` tracks active viewers. Both the hook and the MANDATORY procedure above check this registry to avoid spawning duplicate servers.
+A PID registry at `/tmp/live-md-viewer-registry.json` tracks active viewers. The hook adds files to the running server instead of spawning duplicates.
