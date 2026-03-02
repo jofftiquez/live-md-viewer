@@ -124,7 +124,7 @@ A PostToolUse hook on `Write` automatically launches the viewer whenever a markd
 1. Every `Write` tool call triggers `hooks/auto-launch.mjs`
 2. The hook checks if the written file is a viewable markdown file (deny-list approach)
 3. If a server is already running, it silently adds the file via API
-4. If no server is running, the hook **spawns the server directly** as a detached process and emits a JSON `systemMessage` to inform the LLM (no action needed from the LLM)
+4. If no server is running, the hook emits a JSON `systemMessage` instructing the LLM to launch the server via `Bash(run_in_background: true)` so it's tracked as a Claude Code background task
 
 ### Detection (deny-list approach)
 

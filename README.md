@@ -77,7 +77,7 @@ The PostToolUse hook fires on every `Write` tool call and launches the viewer fo
 
 **Ignored paths:** `/.claude/`, `/node_modules/`, `/.git/`
 
-The hook spawns the server directly as a detached process — no LLM action required.
+The hook emits a `systemMessage` instructing the LLM to launch the server as a background task.
 
 ## REST API
 
@@ -98,7 +98,7 @@ The viewer server exposes an API for programmatic use:
 3. **Deny-list check** — skips ignored filenames (`README.md`, etc.) and ignored paths (`/.claude/`, `/node_modules/`, `/.git/`)
 4. **Server routing**:
    - Server already running → file is silently added via `POST /api/add-file`
-   - No server running → hook spawns the server directly as a detached child process
+   - No server running → hook emits a `systemMessage` and the LLM launches the server as a background task
 5. **Live reload** — the server watches all tracked files with `fs.watchFile`. Changes trigger SSE events to all connected browsers
 6. **Browser rendering** — marked.js parses GFM, highlight.js colorizes code blocks, mermaid.js renders diagrams, DOMPurify sanitizes everything
 
